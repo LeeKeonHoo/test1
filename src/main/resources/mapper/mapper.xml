@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mapper">
+
+	<resultMap type="map" id="boardMap">
+		<result column="SEQ" property="seq" />
+		<result column="MEM_NAME" property="memName" />
+		<result column="MEM_ID" property="memId" />
+		<result column="BOARD_SUBJECT" property="boardSubject" />
+		<result column="BOARD_CONTENT" property="boardContent" />
+		<result column="REG_DATE" property="regDate" />
+		<result column="UPT_DATE" property="uptDate" />
+		<result column="VIEW_CNT" property="viewCnt" />
+	</resultMap>
+
+	<sql id="boardlist">
+		SELECT
+		SEQ
+		,MEM_NAME
+		,MEM_ID
+		,BOARD_SUBJECT
+		,BOARD_CONTENT
+		,REG_DATE
+		,UPT_DATE
+		,VIEW_CNT
+		FROM BOARD_STUDY
+	</sql>
+	
+	<select id="miplist" parameterType="Map" resultMap="boardMap">
+		SELECT
+		SEQ
+		,MEM_NAME
+		,MEM_ID
+		,BOARD_SUBJECT
+		,BOARD_CONTENT
+		,REG_DATE
+		,UPT_DATE
+		,VIEW_CNT
+		FROM BOARD_STUDY
+		WHERE 1=1
+		<if test="search !='null'">
+			<choose>
+				<when test='option=="1"'>
+			 		AND (MEM_NAME like '%' || #{search} || '%'
+					OR MEM_ID like '%' || #{search} || '%'
+					OR BOARD_SUBJECT like '%' || #{search} || '%'
+					OR BOARD_CONTENT like '%' || #{search} || '%')				
+				</when>
+				<when test='option=="2"'>
+					AND (MEM_NAME like '%' || #{search} || '%'
+					OR MEM_ID like '%' || #{search} || '%')				
+				</when>
+				<when test='option=="3"'>
+					AND BOARD_SUBJECT like '%' || #{search} || '%'
+				</when>
+			</choose>
+		</if>
+		<if test="startdata != '____-__-__' or enddata != '____-__-__'">
+			and reg_date between #{startdata} and #{enddata}
+		</if>
+		ORDER BY SEQ DESC
+	</select>
+
+	<select id="listDao" parameterType="Map" resultMap="boardMap">
+		SELECT * from (
+		select
+		 rownum rnum
+		,SEQ
+		,MEM_NAME
+		,MEM_ID
+		,BOARD_SUBJECT
+		,BOARD_CONTENT
+		,REG_DATE
+		,UPT_DATE
+		,VIEW_CNT
+		FROM BOARD_STUDY
+		where 1=1
+		<if test="option != null">
+			<choose>
+				<when test='option="1"'>
+					AND (MEM_NAME like '%' || #{search} || '%'
+					OR BOARD_SUBJECT like '%' || #{search} || '%'
+					OR BOARD_CONTENT like '%' || #{search} || '%')
+				</when>
+				<when test='option="2"'>
+					and (MEM_NAME like '%' || #{search} || '%')
+				</when>
+				<when test='option="3"'>
+					and (BOARD_SUBJECT like '%' || #{search} || '%')
+				</when>
+				<otherwise>
+					AND (BOARD_SUBJECT like '%' || #{search} || '%'
+					OR BOARD_CONTENT like '%' || #{search} || '%')
+				</otherwise>
+			</choose>
+		</if>
+		<if test="startdate != null and startdate != ''">
+			and to_char(reg_date,'yyyy-mm-dd') between #{startdate} and #{enddate}
+		</if>
+		)
+<!-- 		where rnum between ((#{pageNo}-1) * #{listSize} + 1) and (#{pageNo} * #{listSize})
+ -->		ORDER BY SEQ DESC
+	</select >
+
+	<select id="total" parameterType="Map" resultType="integer">
+		SELECT COUNT(*) FROM BOARD_STUDY
+		where 1=1
+		<if test="option != null">
+			<choose>
+				<when test='option="1"'>
+					AND (MEM_NAME like '%' || #{search} || '%'
+					OR BOARD_SUBJECT like '%' || #{search} || '%'
+					OR BOARD_CONTENT like '%' || #{search} || '%')
+				</when>
+				<when test='option="2"'>
+					and (MEM_NAME like '%' || #{search} || '%')
+				</when>
+				<when test='option="3"'>
+					and (BOARD_SUBJECT like '%' || #{search} || '%')
+				</when>
+				<otherwise>
+					AND (BOARD_SUBJECT like '%' || #{search} || '%'
+					OR BOARD_CONTENT like '%' || #{search} || '%')
+				</otherwise>
+			</choose>
+		</if>
+		<if test="startdate != null and startdate != ''">
+			and to_char(reg_date,'yyyy-mm-dd') between #{startdate} and #{enddate}
+		</if>
+		ORDER BY SEQ DESC
+	</select>
+
+	<insert id="writeok">
+		INSERT INTO BOARD_STUDY
+		(
+		SEQ
+		,MEM_NAME
+		,MEM_ID
+		,BOARD_SUBJECT
+		,BOARD_CONTENT
+		,REG_DATE
+		,VIEW_CNT
+		)
+		VALUES
+		(
+		(select nvl(max(seq),0)+1 from board_study)
+		,#{name, jdbcType=VARCHAR}
+		,#{id, jdbcType=VARCHAR}
+		,#{title, jdbcType=VARCHAR}
+		,#{content, jdbcType=VARCHAR}
+		,(SELECT SYSDATE FROM DUAL)
+		,'0'
+		)
+	</insert>
+
+	<select id="content" parameterType="int" resultMap="boardMap">
+		<include refid="boardlist"></include>
+		WHERE SEQ = #{seq}
+	</select>
+
+	<update id="modify">
+		update board_study
+		set mem_name = #{name}
+		,mem_id =#{id}
+		,BOARD_SUBJECT = #{title}
+		,BOARD_CONTENT = #{content}
+		,UPT_DATE = (SELECT SYSDATE FROM DUAL)
+		where SEQ = #{seq}
+	</update>
+
+	<update id="uphit">
+		update board_study
+		set view_cnt = VIEW_CNT+1
+		where seq
+		= #{seq}
+	</update>
+
+	<delete id="delete" parameterType="integer">
+		delete from board_study
+		where seq in
+		<foreach collection="list" item="item" open="(" close=")"
+			separator=",">
+			#{item}
+		</foreach>
+	</delete>
+
+
+
+</mapper>
+
